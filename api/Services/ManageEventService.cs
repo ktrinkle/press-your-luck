@@ -106,7 +106,7 @@ public class ManageEventService : IManageEventService
     }
 
     public async Task<List<CurrentStatusDto>> GetCurrentStatusAsync()
-        =>  await _contextPYL.Scoring.Select(s => new CurrentStatusDto()
+    =>  await _contextPYL.Scoring.OrderBy(s => s.TeamId).Select(s => new CurrentStatusDto()
         {
             TeamId = s.TeamId,
             SpinCnt = s.SpinCnt,
