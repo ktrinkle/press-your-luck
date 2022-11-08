@@ -1,53 +1,53 @@
 using Microsoft.IdentityModel.Logging;
 
-namespace PressYourLuckApi.Extensions
-{
-    public class JwtMiddleware
-    {
-        private readonly RequestDelegate _next;
-        private readonly AppSettings _appSettings;
+namespace PressYourLuckApi.Extensions;
 
-    public JwtMiddleware(RequestDelegate next, IOptions<AppSettings> appSettings)
+public class JwtMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly AppSettings _appSettings;
+
+public JwtMiddleware(RequestDelegate next, IOptions<AppSettings> appSettings)
+{
+    _next = next;
+    _appSettings = appSettings.Value;
+}
+
+    public async Task InvokeAsync(HttpContext context)
     {
-        _next = next;
-        _appSettings = appSettings.Value;
+        var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last() ?? "";
+        var userJwtDto = ValidateJwtToken(token);
+
+        await _next(context);
     }
 
-        public async Task InvokeAsync(HttpContext context)
+    public bool? ValidateJwtToken(string token)
+    {
+        if (token == null)
         {
-            var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last() ?? "";
-            var userJwtDto = ValidateJwtToken(token);
-
-            await _next(context);
+            return null;
         }
 
-        public bool? ValidateJwtToken(string token)
+        IdentityModelEventSource.ShowPII = true;
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_appSettings.Secret!);
+
+        tokenHandler.ValidateToken(token, new TokenValidationParameters
         {
-            if (token == null)
-            {
-                return null;
-            }
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key) { KeyId = _appSettings.JWTKeyId },
+            ValidateIssuer = false,
+            ValidIssuer = _appSettings.Issuer,
+            ValidateAudience = true,
+            ValidAudience = _appSettings.Audience,
+            // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
+            ClockSkew = TimeSpan.Zero
+        }, out var validatedToken);
 
-            IdentityModelEventSource.ShowPII = true;
+        var jwtToken = (JwtSecurityToken)validatedToken;
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_appSettings.Secret!);
-
-            tokenHandler.ValidateToken(token, new TokenValidationParameters
-            {
-                ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(key) { KeyId = _appSettings.JWTKeyId },
-                ValidateIssuer = false,
-                ValidIssuer = _appSettings.Issuer,
-                ValidateAudience = true,
-                ValidAudience = _appSettings.Audience,
-                // set clockskew to zero so tokens expire exactly at token expiration time (instead of 5 minutes later)
-                ClockSkew = TimeSpan.Zero
-            }, out var validatedToken);
-
-            var jwtToken = (JwtSecurityToken)validatedToken;
-
-            return (jwtToken is not null);
-        }
+        return (jwtToken is not null);
     }
 }
+

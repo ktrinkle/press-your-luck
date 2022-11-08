@@ -1,8 +1,7 @@
-namespace PressYourLuckApi.Models
+namespace PressYourLuckApi.Models;
+
+public class BearerDto
 {
-    public class BearerDto
-    {
-        public string? UserName { get; set; }
-        public string? BearerToken { get; set; }
-    }
+    public string? UserName { get; set; }
+    public string? BearerToken { get; set; }
 }
